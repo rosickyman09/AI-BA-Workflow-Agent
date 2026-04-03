@@ -1,0 +1,17 @@
+{
+  "/_app": "pages/_app.js",
+  "/_error": "pages/_error.js",
+  "/_document": "pages/_document.js",
+  "/": "pages/index.js",
+  "/api/auth/me": "pages/api/auth/me.js",
+  "/api/notifications/in-app/unread-count": "pages/api/notifications/in-app/unread-count.js",
+  "/api/projects": "pages/api/projects.js",
+  "/documents": "pages/documents.js",
+  "/approvals": "pages/approvals.js",
+  "/projects": "pages/projects.js",
+  "/api/approvals": "pages/api/approvals.js",
+  "/generate-urs": "pages/generate-urs.js",
+  "/knowledge-base": "pages/knowledge-base.js",
+  "/my-documents": "pages/my-documents.js",
+  "/api/documents/my-submissions": "pages/api/documents/my-submissions.js"
+}

@@ -1,0 +1,111 @@
+{
+  "name": "workflow_d_digest",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": [
+          {
+            "mode": "custom",
+            "cronExpression": "0 17 * * 5"
+          }
+        ]
+      },
+      "id": "cron_weekly",
+      "name": "Cron Friday 5PM",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        260,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  (SELECT COUNT(*) FROM documents\n   WHERE status IN ('approved', 'published')\n     AND updated_at >= date_trunc('week', NOW())) AS completed_count,\n  (SELECT COUNT(*) FROM approval_workflows\n   WHERE status IN ('in_progress', 'human_review_required')) AS pending_count;"
+      },
+      "id": "pg_aggregate",
+      "name": "Aggregate Weekly Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        560,
+        260
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "replace-with-credential-id",
+          "name": "Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const row = items[0]?.json || {};\nconst completed = Number(row.completed_count || 0);\nconst pending = Number(row.pending_count || 0);\nreturn [{ json: { message: `📊 Weekly Summary — Completed: ${completed} | Pending: ${pending}` } }];"
+      },
+      "id": "format_digest",
+      "name": "Format Weekly Digest",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        860,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": $env.TELEGRAM_CHAT_ID, \"text\": $json.message}"
+      },
+      "id": "send_digest",
+      "name": "Send Telegram Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1140,
+        260
+      ]
+    }
+  ],
+  "connections": {
+    "Cron Friday 5PM": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Weekly Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Weekly Metrics": {
+      "main": [
+        [
+          {
+            "node": "Format Weekly Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Weekly Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "stage7h-workflow-d"
+}

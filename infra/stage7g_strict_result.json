@@ -1,0 +1,340 @@
+{
+    "gate1_status":  200,
+    "gate1_body":  {
+                       "workflow_id":  "668f3e54-f03b-4b95-927a-3e5c229971c8",
+                       "doc_id":  "df3da7b3-67e6-4cb4-937a-da4650a724b0",
+                       "project_id":  "660e8400-e29b-41d4-a716-446655440000",
+                       "workflow_type":  "approval",
+                       "status":  "pending",
+                       "current_step":  1,
+                       "total_steps":  3,
+                       "timestamp":  "2026-03-18T15:30:44.724494"
+                   },
+    "workflow_id":  "668f3e54-f03b-4b95-927a-3e5c229971c8",
+    "gate2_status":  403,
+    "gate2_body":  "",
+    "gate3_status":  200,
+    "gate3_body":  {
+                       "workflow_id":  "668f3e54-f03b-4b95-927a-3e5c229971c8",
+                       "decision_id":  "53dd2af6-0d51-4c28-8a58-35091f25cffb",
+                       "status":  "in_progress",
+                       "current_step":  2,
+                       "next_required_role":  "legal",
+                       "version_id":  "b7c397ea-40be-4f15-858b-3616e4645d2f",
+                       "timestamp":  "2026-03-18T15:30:44.874882"
+                   },
+    "gate4_audit":  [
+                        "APPROVAL_APPROVED|550e8400-e29b-41d4-a716-446655440003|2026-03-18 15:30:44",
+                        "VERSION_CREATED|550e8400-e29b-41d4-a716-446655440003|2026-03-18 15:30:44",
+                        "APPROVAL_CREATED|550e8400-e29b-41d4-a716-446655440000|2026-03-18 15:30:44",
+                        "login|550e8400-e29b-41d4-a716-446655440003|2026-03-18 15:30:44",
+                        "login|550e8400-e29b-41d4-a716-446655440001|2026-03-18 15:30:44"
+                    ],
+    "gate5_status":  200,
+    "gate5_body":  {
+                       "doc_id":  "df3da7b3-67e6-4cb4-937a-da4650a724b0",
+                       "requested_by":  "owner@ai-ba.local",
+                       "total":  36,
+                       "versions":  [
+                                        {
+                                            "version_id":  "b7c397ea-40be-4f15-858b-3616e4645d2f",
+                                            "version_number":  36,
+                                            "content_hash":  "4a6effdfe05cae6874a91fd47435bb321c4752b82a25e796a8b70464aa99a782",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:30:44.879000"
+                                        },
+                                        {
+                                            "version_id":  "de967be6-906e-4472-8edd-29a0475fb7e7",
+                                            "version_number":  35,
+                                            "content_hash":  "389a3bc6c74ba340d618d6e6357f6333352be63240a3a358ae0fd8c650d161d1",
+                                            "approval_status":  "rejected",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:27:22.052198"
+                                        },
+                                        {
+                                            "version_id":  "dce460a0-14fa-4329-91e3-4495a0843fb0",
+                                            "version_number":  34,
+                                            "content_hash":  "82ca513d39d66f52de4e30bf84dfee514e1b1b18aac76ffe4d4e528e92698ebe",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:27:21.991727"
+                                        },
+                                        {
+                                            "version_id":  "190e5bd6-a2af-4eba-a3a8-3c971e0cd17c",
+                                            "version_number":  33,
+                                            "content_hash":  "62a79d216f8f0460fa7629a43a9d5f15143310e8ff27dbff5789ed0b3a282b0a",
+                                            "approval_status":  "approved",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:27:21.926889"
+                                        },
+                                        {
+                                            "version_id":  "47c6050c-3f65-4bfb-b77a-c0eaf2202816",
+                                            "version_number":  32,
+                                            "content_hash":  "35063d5690e83dc17a965fcf1c7c7a468b5cccc0cc46fbca872afce7e5b6e800",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:27:21.872392"
+                                        },
+                                        {
+                                            "version_id":  "e959d6bc-a64a-40c0-b106-e6c4016b46a0",
+                                            "version_number":  31,
+                                            "content_hash":  "73909c8986703df4fdddd925f8e0dfb61771f522f4a7031745fbefb84c4a69c7",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:27:21.810612"
+                                        },
+                                        {
+                                            "version_id":  "b97bb5b4-7ba4-492a-9c20-786f95b6485d",
+                                            "version_number":  30,
+                                            "content_hash":  "25d7939e8d1b814057f150ad3dca740de9ebaf873e50170fa3d157a6e959b8eb",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:27:21.751864"
+                                        },
+                                        {
+                                            "version_id":  "6f79e64e-899c-427f-b7ac-6052b0e3c7b6",
+                                            "version_number":  29,
+                                            "content_hash":  "b41d3a3e77cf447659d734ef976818a2bc23d573c06c146dbafd9fdf65f8937a",
+                                            "approval_status":  "rejected",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:18:18.802589"
+                                        },
+                                        {
+                                            "version_id":  "1d9022d0-3248-42cd-8eac-63a5feaa8aa8",
+                                            "version_number":  28,
+                                            "content_hash":  "be5fb8631697755bb543c8b0b7ccda9d166822cf9d7ab2ab189cba1a54399e59",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:18:18.733177"
+                                        },
+                                        {
+                                            "version_id":  "0434544b-de0d-4e06-a704-97bd59423d9d",
+                                            "version_number":  27,
+                                            "content_hash":  "0b75d53d5e7054686ccb9201b68ae2847616b5b9cdff94b5463d553fd1305514",
+                                            "approval_status":  "approved",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:18:18.667814"
+                                        },
+                                        {
+                                            "version_id":  "21e9cbad-c281-4aa9-a581-ae734276558b",
+                                            "version_number":  26,
+                                            "content_hash":  "e5f963e2c0f34373ebd061c28353586bc9714bf82f49ec41641d22adac543562",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:18:18.611024"
+                                        },
+                                        {
+                                            "version_id":  "36e7421d-d092-44b9-b417-9d4f2447da59",
+                                            "version_number":  25,
+                                            "content_hash":  "53eeeccb6d58cbc17d7a40105e34d135b782f04c97c713632efc0442d74fa0c5",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:18:18.556284"
+                                        },
+                                        {
+                                            "version_id":  "630681f7-d60b-4eaa-a1b0-e45e275048db",
+                                            "version_number":  24,
+                                            "content_hash":  "46f660bf103619d3d56fb4f97b4e2cbe5b2b3963a96962876daeb2ac5eb5602b",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:18:18.535938"
+                                        },
+                                        {
+                                            "version_id":  "0753fe74-3e0f-4d63-8a4f-cec36089ecda",
+                                            "version_number":  23,
+                                            "content_hash":  "49c085064f8d0561ced99dbc0d7a8cbae3c56edd31f6cb60c049f75d21a6cc65",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:17:24.659921"
+                                        },
+                                        {
+                                            "version_id":  "08257360-8117-41bc-af42-0579e64325aa",
+                                            "version_number":  22,
+                                            "content_hash":  "90ac7f0ddd5f0654e30bfdee821f814e41a3d43e353987740821f5e580d98ce7",
+                                            "approval_status":  "approved",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:17:24.596951"
+                                        },
+                                        {
+                                            "version_id":  "95bce9d2-8789-4b18-b803-fd3daa0bcb15",
+                                            "version_number":  21,
+                                            "content_hash":  "2cf225a53e098f416b5647c59eb4d7691c815bc794ba4f827caa87597734da40",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:17:24.528414"
+                                        },
+                                        {
+                                            "version_id":  "d67f5589-bba3-4c6c-ad73-8d0c01a8214c",
+                                            "version_number":  20,
+                                            "content_hash":  "a29b9251dd6c4a270777e48c42ba72508d7a078343e43315464015441beb4f0f",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:17:24.465936"
+                                        },
+                                        {
+                                            "version_id":  "d3447dcb-c5d4-4b75-904e-a2d1759e57ac",
+                                            "version_number":  19,
+                                            "content_hash":  "b7c8a692303d784b9f0c7c3e05b162d9affd9dea9435f659a1e6e261922f326b",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:17:24.400048"
+                                        },
+                                        {
+                                            "version_id":  "8bf25815-e170-4391-9b71-fdc952f97e45",
+                                            "version_number":  18,
+                                            "content_hash":  "3c0bba0c74cd31fef7f1660f3f2bc069217e84e7b327c43263ded5ba7475f3cf",
+                                            "approval_status":  "rejected",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:16:28.103379"
+                                        },
+                                        {
+                                            "version_id":  "6577a918-a6f1-42ee-b9a9-4ef2001817a3",
+                                            "version_number":  17,
+                                            "content_hash":  "1d389c924963e2e2501f086edce1f99f87d0ad946955d0b67a3a5f5beeac7f6e",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:16:28.046597"
+                                        },
+                                        {
+                                            "version_id":  "cd18c60e-f0f9-4687-95ba-9b14590ed2aa",
+                                            "version_number":  16,
+                                            "content_hash":  "75b7a0d5f3a5d6c111654bde5f1083013577ef7eb139bb16670a4f2f2ac707ec",
+                                            "approval_status":  "approved",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:16:27.995226"
+                                        },
+                                        {
+                                            "version_id":  "967eaa84-769c-4be2-8807-4935230cffa9",
+                                            "version_number":  15,
+                                            "content_hash":  "6715ef4f30eaee31825b4526d7ca3afc362d94f5f76e1b3e273f517f788e04c5",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:16:27.934557"
+                                        },
+                                        {
+                                            "version_id":  "a68e448c-6857-4bd1-8c06-63c0ad9ad604",
+                                            "version_number":  14,
+                                            "content_hash":  "90ab6b3d38f863a801cd795cccab2f23b30e46939b01b4ac47a67909fddf552d",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:16:27.869738"
+                                        },
+                                        {
+                                            "version_id":  "133f67a4-8f97-4845-a991-dc5d21620827",
+                                            "version_number":  13,
+                                            "content_hash":  "9e120bae94e6027c896a780656c2efc02ea271364aab916d24945725097bad2f",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:16:27.813657"
+                                        },
+                                        {
+                                            "version_id":  "d5f81aea-04b7-48c9-872a-440e16ad6390",
+                                            "version_number":  12,
+                                            "content_hash":  "5e2a68b02dc133d1998e987068abd80a283f6be487b6721d6901326c331a60a5",
+                                            "approval_status":  "rejected",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:16:19.806630"
+                                        },
+                                        {
+                                            "version_id":  "80dbde6e-5bdf-4930-ae55-91c800f1230a",
+                                            "version_number":  11,
+                                            "content_hash":  "909bede206815002f45b9f1ef03a389633225b3318c8e192cadcc7296eae8b7d",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:16:19.749164"
+                                        },
+                                        {
+                                            "version_id":  "76b3ea6b-14e1-4050-a33f-ac81c04984c3",
+                                            "version_number":  10,
+                                            "content_hash":  "c4b99c61157f7f5ebd7d45cb4c9dd65a0ddd889df1c3592536d5dda1eedff693",
+                                            "approval_status":  "approved",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:16:19.695860"
+                                        },
+                                        {
+                                            "version_id":  "f4e819d2-a05f-4ee6-8f26-f4c51e446e72",
+                                            "version_number":  9,
+                                            "content_hash":  "d3716ce0f39f2fe6380c5e2aa9da91c22e4c050167f4a15b4bfc661e80b02eca",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:16:19.640610"
+                                        },
+                                        {
+                                            "version_id":  "bb25a449-505f-4e2a-9d3c-ddb4e050686c",
+                                            "version_number":  8,
+                                            "content_hash":  "b1515cc4a6f40fd3c98fa9786ef9ab738956c8ef5f8152b331d0ac20cb7be3a8",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:16:19.585967"
+                                        },
+                                        {
+                                            "version_id":  "96d3e5cb-d95d-4cf9-aa3b-fceb5b4e6645",
+                                            "version_number":  7,
+                                            "content_hash":  "eaa0a95e8bf03ff0b45ba655a08b32403a7845e07337feb2108ec92f187b23ea",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:16:19.532469"
+                                        },
+                                        {
+                                            "version_id":  "0ca2f010-9dc1-4654-b188-4f7e7160dc39",
+                                            "version_number":  6,
+                                            "content_hash":  "96aa0521027df88ffdab4564883160cfd064c646740d7ec349152db73d0482f4",
+                                            "approval_status":  "rejected",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:16:00.733713"
+                                        },
+                                        {
+                                            "version_id":  "a8b07b72-57ad-4878-81a7-78e91fd5110c",
+                                            "version_number":  5,
+                                            "content_hash":  "39e22c071544301b8ac712e2006c20d1a4c2ebe35daed75e8616fc3e7bfc2beb",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:16:00.593967"
+                                        },
+                                        {
+                                            "version_id":  "1a46aca5-85e3-4d80-9165-dbe6a0450828",
+                                            "version_number":  4,
+                                            "content_hash":  "ad1ff01b545a2135ad53165e6f6f2e2f0ac3752a0c0a5c6969033c3a124a6bb4",
+                                            "approval_status":  "approved",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:16:00.410918"
+                                        },
+                                        {
+                                            "version_id":  "73539fb5-5f20-4420-b58e-055342007d4f",
+                                            "version_number":  3,
+                                            "content_hash":  "95031611528ad3ed7633cd0f1d330a71757e73470a45839f354c9d153e87f147",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440000",
+                                            "created_at":  "2026-03-18T15:16:00.277648"
+                                        },
+                                        {
+                                            "version_id":  "9dfb9b2f-db50-4bd5-9389-9e9758d7d3d0",
+                                            "version_number":  2,
+                                            "content_hash":  "5daaf81b8037e41bd5b5ed7fbce41b41405eb63fa649b51f20a591ddc79089ce",
+                                            "approval_status":  "in_progress",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440003",
+                                            "created_at":  "2026-03-18T15:16:00.080903"
+                                        },
+                                        {
+                                            "version_id":  "cd622a95-28e6-496b-ba33-a9f21187c646",
+                                            "version_number":  1,
+                                            "content_hash":  "ac40bd96e21e7b9098998d11eedd8c1480945c80c1a3f6f0cbf6d86f24bb7f0d",
+                                            "approval_status":  "human_review_required",
+                                            "created_by":  "550e8400-e29b-41d4-a716-446655440001",
+                                            "created_at":  "2026-03-18T15:15:59.859398"
+                                        }
+                                    ]
+                   },
+    "gate6_status":  200,
+    "gate6_body":  {
+                       "workflow_id":  "628030ac-d494-44f7-aada-cb7f8916ac61",
+                       "doc_id":  "df3da7b3-67e6-4cb4-937a-da4650a724b0",
+                       "project_id":  "660e8400-e29b-41d4-a716-446655440000",
+                       "status":  "human_review_required",
+                       "current_step":  1,
+                       "next_required_role":  "business_owner",
+                       "version_id":  "69e03b71-7086-4fad-99de-3525f5c923fe",
+                       "timestamp":  "2026-03-18T15:30:45.090625"
+                   }
+}

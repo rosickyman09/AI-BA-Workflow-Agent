@@ -1,0 +1,161 @@
+{
+  "name": "workflow_c_backlog",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": [
+          {
+            "mode": "custom",
+            "cronExpression": "0 8 * * 1-5"
+          }
+        ]
+      },
+      "id": "cron_daily_backlog",
+      "name": "Cron 8AM Weekdays",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        260,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": "={{$env.GOOGLE_SHEETS_ID}}",
+        "sheetName": "={{($env.GOOGLE_SHEETS_RANGE || 'Backlog!A:F').split('!')[0]}}"
+      },
+      "id": "google_sheets_backlog",
+      "name": "Read Google Sheets Backlog",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        520,
+        260
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "replace-with-credential-id",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const now = new Date();\nconst overdue = [];\nfor (const item of items) {\n  const dueRaw = item.json.due_date || item.json.dueDate || item.json.DueDate || item.json.Due || '';\n  const owner = item.json.owner || item.json.Owner || item.json.assignee || 'Unassigned';\n  const title = item.json.item || item.json.title || item.json.Task || item.json.task || 'Untitled';\n  const due = dueRaw ? new Date(dueRaw) : null;\n  if (due && !Number.isNaN(due.getTime()) && due < now) {\n    overdue.push({ json: { title, owner, due_date: due.toISOString().slice(0, 10) } });\n  }\n}\nreturn overdue;"
+      },
+      "id": "filter_overdue",
+      "name": "Filter Overdue Items",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        780,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1
+      },
+      "id": "split_items",
+      "name": "Split Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1010,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map((item) => {\n  item.json.message = `⚠️ Overdue: ${item.json.title} assigned to ${item.json.owner} — due ${item.json.due_date}`;\n  return item;\n});"
+      },
+      "id": "format_message",
+      "name": "Format Telegram Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        1230,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": $env.TELEGRAM_CHAT_ID, \"text\": $json.message}"
+      },
+      "id": "send_telegram",
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1470,
+        260
+      ]
+    }
+  ],
+  "connections": {
+    "Cron 8AM Weekdays": {
+      "main": [
+        [
+          {
+            "node": "Read Google Sheets Backlog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Google Sheets Backlog": {
+      "main": [
+        [
+          {
+            "node": "Filter Overdue Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Overdue Items": {
+      "main": [
+        [
+          {
+            "node": "Split Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Items": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "stage7h-workflow-c"
+}

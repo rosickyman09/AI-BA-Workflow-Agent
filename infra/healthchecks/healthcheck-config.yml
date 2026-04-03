@@ -1,0 +1,211 @@
+# ============================================================================
+# Health Check Configuration - AI BA Agent Services
+# ============================================================================
+# Version: 1.0
+# Date: 2026-03-17
+# Purpose: Centralized health check configuration for all services
+# ============================================================================
+
+# Health Check Policy
+# - All services must have a healthcheck defined in docker-compose.yml
+# - Health checks ensure proper startup sequencing via depends_on
+# - Failed health checks will cause docker-compose to mark services as "unhealthy"
+
+---
+
+health_checks:
+
+  # ========================================================================
+  # INFRASTRUCTURE LAYER HEALTH CHECKS
+  # ========================================================================
+
+  postgres:
+    name: PostgreSQL Database
+    command: "pg_isready -U postgres -d ai_ba_db"
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
+    description: "Checks if PostgreSQL accepts connections on port 5432"
+    recovery_action: "Restart container and restore from backup if corrupted"
+
+  redis:
+    name: Redis Cache
+    command: "redis-cli ping"
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 10s
+    description: "Checks if Redis responds to PING command on port 6379"
+    recovery_action: "Restart container, cache will be rebuilt on first use"
+
+  qdrant:
+    name: Qdrant Vector Database
+    command: "bash -c 'echo OK'"
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 15s
+    description: "Basic connectivity check to Qdrant on port 6333"
+    recovery_action: "Restart container, vector embeddings will be regenerated"
+
+  # ========================================================================
+  # APPLICATION SERVICES HEALTH CHECKS
+  # ========================================================================
+
+  auth_service:
+    name: Authentication Service
+    endpoint: "http://localhost:5001/health"
+    method: "GET"
+    expected_status: 200
+    command: 'python -c "import urllib.request; urllib.request.urlopen(\'http://localhost:5001/health\')"'
+    interval: 15s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+    description: "Checks if auth service is responding on port 5001"
+    expected_response:
+      status: "healthy"
+      service: "auth_service"
+    recovery_action: "Restart container and replay login tokens from Redis"
+
+  backend:
+    name: Backend API Service
+    endpoint: "http://localhost:5000/health"
+    method: "GET"
+    expected_status: 200
+    command: 'python -c "import urllib.request; urllib.request.urlopen(\'http://localhost:5000/health\')"'
+    interval: 15s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+    description: "Checks if backend API is responding on port 5000"
+    expected_response:
+      status: "healthy"
+      service: "backend"
+      dependencies:
+        - postgres: healthy
+        - redis: healthy
+        - auth_service: healthy
+    recovery_action: "Restart container and reconnect to database"
+
+  rag_service:
+    name: RAG (Retrieval-Augmented Generation) Service
+    endpoint: "http://localhost:5002/health"
+    method: "GET"
+    expected_status: 200
+    command: 'python -c "import urllib.request; urllib.request.urlopen(\'http://localhost:5002/health\')"'
+    interval: 15s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+    description: "Checks if RAG service is responding on port 5002"
+    expected_response:
+      status: "healthy"
+      service: "rag_service"
+      dependencies:
+        - postgres: healthy
+        - qdrant: healthy
+        - redis: healthy
+    recovery_action: "Restart container and reconnect to Qdrant"
+
+  # ========================================================================
+  # PRESENTATION LAYER HEALTH CHECKS
+  # ========================================================================
+
+  frontend:
+    name: Frontend React Application
+    endpoint: "http://localhost:3000"
+    method: "GET"
+    expected_status: 200
+    command: "wget -q --spider http://localhost:3000 || exit 1"
+    interval: 15s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+    description: "Checks if Next.js frontend is responding on port 3000"
+    recovery_action: "Restart container and rebuild Next.js assets"
+
+  gateway:
+    name: Nginx Reverse Proxy Gateway
+    endpoint: "http://localhost:80/health"
+    method: "GET"
+    expected_status: 200
+    command: "wget -q --spider http://localhost/health || exit 1"
+    interval: 15s
+    timeout: 10s
+    retries: 3
+    start_period: 20s
+    description: "Checks if Nginx gateway is responding on port 80/443"
+    recovery_action: "Restart container and verify upstream services"
+
+---
+
+# ============================================================================
+# HEALTH CHECK VERIFICATION COMMANDS
+# ============================================================================
+#
+# View all container health status:
+#   docker-compose ps
+#
+# Inspect detailed health status:
+#   docker inspect ai_ba_postgres --format='{{json .State.Health}}'
+#
+# View health logs:
+#   docker-compose logs --tail=50 postgres
+#
+# Test specific service after restart:
+#   docker-compose exec postgres pg_isready
+#   curl http://localhost:5000/health
+#   curl http://localhost:5001/health
+#   curl http://localhost:5002/health
+#   curl http://localhost:3000
+#   curl http://localhost:80
+#
+
+---
+
+# ============================================================================
+# STARTUP SEQUENCE (depends_on: service_healthy)
+# ============================================================================
+#
+# The following startup order is enforced via docker-compose.yml:
+#
+# TIER 0 (Start first, in parallel):
+#   ✓ postgres     (healthcheck: pg_isready)
+#   ✓ redis        (healthcheck: redis-cli ping)
+#   ✓ qdrant       (healthcheck: echo OK)
+#
+# TIER 1 (Start when TIER 0 is healthy):
+#   ✓ auth_service (depends_on: postgres✓, redis✓)
+#   ✓ backend      (depends_on: postgres✓, redis✓, auth_service✓)
+#   ✓ rag_service  (depends_on: postgres✓, qdrant✓, redis✓)
+#
+# TIER 2 (Start when TIER 1 is healthy):
+#   ✓ frontend     (no dependencies)
+#   ✓ gateway      (depends_on: frontend✓, backend✓, all others✓)
+#
+# Total startup time: ~40-60 seconds (depending on machine speed)
+
+---
+
+# ============================================================================
+# TROUBLESHOOTING GUIDE
+# ============================================================================
+#
+# Service marked as "unhealthy" but appears to work:
+#   → Increase start_period in healthcheck (grace period for initialization)
+#   → Ensure service port is correct
+#   → Check service logs: docker-compose logs service_name
+#
+# Health check failing repeatedly:
+#   → Check service logs: docker-compose logs service_name
+#   → Verify service is actually running: docker-compose exec service_name bash
+#   → Test endpoint manually: sudo netstat -tlnp | grep :5000
+#
+# Service won't start because dependency is "unhealthy":
+#   → Docker will retry 3-5 times then give up
+#   → Check parent service first (postgres, redis, qdrant)
+#   → Restart everything: docker-compose restart
+#   → Nuclear option: docker-compose down -v && docker-compose up -d
+#

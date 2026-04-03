@@ -1,0 +1,162 @@
+{
+  "name": "workflow_e_reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "approval-reminder",
+        "httpMethod": "POST",
+        "responseMode": "lastNode"
+      },
+      "id": "event_trigger",
+      "name": "Approval Reminder Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": [
+          {
+            "mode": "custom",
+            "cronExpression": "0 9 * * *"
+          }
+        ]
+      },
+      "id": "cron_daily",
+      "name": "Daily Reminder Check",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        260,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  aw.workflow_id,\n  d.title,\n  aw.created_at::date AS pending_since\nFROM approval_workflows aw\nJOIN documents d ON d.doc_id = aw.doc_id\nWHERE aw.status IN ('in_progress', 'human_review_required')\n  AND aw.created_at < NOW() - INTERVAL '2 days'\nORDER BY aw.created_at ASC;"
+      },
+      "id": "fetch_pending",
+      "name": "Fetch Pending Approvals",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        560,
+        260
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "replace-with-credential-id",
+          "name": "Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1
+      },
+      "id": "split_reminders",
+      "name": "Split Reminders",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        820,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const title = $json.title || 'Untitled document';\nconst pendingSince = $json.pending_since || 'unknown';\nconst workflowId = $json.workflow_id;\nconst approveLink = `${$env.FRONTEND_URL || 'http://localhost:3000'}/approvals?workflow_id=${workflowId}`;\nreturn [{\n  json: {\n    message: `⏰ Approval Reminder\\nDocument: ${title}\\nPending since: ${pendingSince}\\nApprove link: ${approveLink}`\n  }\n}];"
+      },
+      "id": "format_reminder",
+      "name": "Format Reminder",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": $env.TELEGRAM_CHAT_ID, \"text\": $json.message}"
+      },
+      "id": "send_reminder",
+      "name": "Send Telegram Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1320,
+        260
+      ]
+    }
+  ],
+  "connections": {
+    "Approval Reminder Event": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Approvals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Reminder Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending Approvals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending Approvals": {
+      "main": [
+        [
+          {
+            "node": "Split Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Reminders": {
+      "main": [
+        [
+          {
+            "node": "Format Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Format Reminder": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "stage7h-workflow-e"
+}

@@ -1,0 +1,149 @@
+---
+name: stage4-ai-agent-design
+description: Designs a multi-agent system based on the AI architecture document and requirement analysis. Use this skill when the user wants to design AI agents, define agent roles and workflows, plan a RAG pipeline, design agent memory, specify tools per agent, define API interactions between agents, or add guardrails and fallback logic. Trigger when the user mentions "agent design", "multi-agent", "RAG pipeline", "agent workflow", "agent roles", "agent memory", "guardrails", "fallback logic", or wants to produce docs/02_agent_design.md from their architecture and requirement inputs.
+---
+
+## Stage 4 — AI Agent Design
+
+### Purpose
+Use both the AI agent architecture vision and the real requirement analysis to design a grounded, detailed multi-agent system — including roles, workflows, RAG pipeline, memory, tools, API interactions, and guardrails.
+
+> ⚠️ Always include **both** input files. Agent design must be grounded in real requirements (Stage 3), not just the architecture vision (Stage 2) alone.
+
+---
+
+### Prerequisites
+
+- [ ] `docs/02_ai_agent_architecture.txt` exists (Stage 2 complete)
+- [ ] `docs/01_requirement_analysis.md` exists (Stage 3 complete)
+- [ ] `.copilot-instructions.md` is in place at project root
+
+---
+
+### Step 1 — Open Copilot Chat and Attach Both Input Files
+
+1. Open Copilot Chat (`Ctrl+Shift+I` / `Cmd+Shift+I`)
+2. Attach or reference **both** files:
+   ```
+   docs/02_ai_agent_architecture.txt
+   docs/01_requirement_analysis.md
+   ```
+3. Use the full prompt in Step 2 below
+
+> **Why both files?** `02_ai_agent_architecture.txt` describes the intended agent vision. `01_requirement_analysis.md` grounds the design in real functional modules, data needs, and constraints. Agent design built only on vision — without real requirements — produces agents that don't map to actual system needs.
+
+---
+
+### Step 2 — Copilot Prompt
+
+Copy and paste the following prompt into Copilot Chat:
+
+```
+Based on the following AI agent architecture document and requirement analysis,
+design a multi-agent system.
+
+Please provide:
+
+1. Agent roles
+2. Agent workflow
+3. RAG pipeline
+4. Memory design
+5. Tools required for each agent
+6. API interaction between agents
+7. Guardrails, validation, and fallback logic
+
+Create:
+docs/02_agent_design.md
+```
+
+---
+
+### Step 3 — Expected Output Structure
+
+Copilot should produce `docs/02_agent_design.md` with the following sections:
+
+```markdown
+# AI Agent Design
+
+## 1. Agent Roles
+- Agent name
+- Responsibility and scope
+- Triggers (what activates this agent)
+- Inputs and outputs
+
+## 2. Agent Workflow
+- End-to-end flow across all agents
+- Sequence diagram (text-based)
+- Handoff conditions between agents
+- Parallel vs sequential execution
+
+## 3. RAG Pipeline
+- Document ingestion and chunking strategy
+- Embedding model and vector store
+- Retrieval method (similarity search, hybrid, etc.)
+- Context window management
+- Re-ranking or filtering logic
+
+## 4. Memory Design
+- Short-term memory (within a session / conversation)
+- Long-term memory (persistent across sessions)
+- Shared memory between agents (if applicable)
+- Memory format and storage backend
+
+## 5. Tools Required for Each Agent
+- Tool name and purpose
+- Which agent owns / calls each tool
+- Input/output schema per tool
+- External APIs or services each tool depends on
+
+## 6. API Interaction Between Agents
+- How agents communicate (direct call, message queue, event bus)
+- Request/response format between agents
+- Authentication between agent services (if applicable)
+- Error propagation between agents
+
+## 7. Guardrails, Validation, and Fallback Logic
+- Input validation rules per agent
+- Output validation and confidence thresholds
+- Hallucination prevention strategies
+- Fallback behaviour when an agent fails or returns low-confidence output
+- Human-in-the-loop escalation triggers
+- Logging and audit trail requirements
+```
+
+---
+
+### Why Section 7 Matters
+
+Guardrails, validation, and fallback logic are especially critical for:
+- AI BA systems (business analysis agents that produce structured decisions)
+- Document processing systems (agents that extract or transform content)
+- RAG systems (agents that retrieve and synthesise information)
+
+Without these, agent failures surface silently or produce incorrect outputs that propagate downstream. Define them here so they are built in from the start — not patched in later.
+
+---
+
+### Output
+
+```
+docs/
+└── 02_agent_design.md    ← Full multi-agent design across 7 dimensions
+```
+
+This document feeds into Stage 5 (system architecture design and service breakdown). Do not begin service or API design until agent design is reviewed and agreed.
+
+---
+
+### Checklist
+
+- [ ] Both input files attached to Copilot Chat (`02_ai_agent_architecture.txt` + `01_requirement_analysis.md`)
+- [ ] Full prompt used — all 7 sections requested
+- [ ] `docs/02_agent_design.md` generated by Copilot
+- [ ] All 7 sections present in the output
+- [ ] Each agent has a clearly defined role, triggers, inputs, and outputs (Section 1)
+- [ ] RAG pipeline covers chunking, embedding, retrieval, and context management (Section 3)
+- [ ] Memory design distinguishes short-term vs long-term (Section 4)
+- [ ] Every agent's tools are listed with input/output schema (Section 5)
+- [ ] Section 7 covers guardrails, fallback logic, and escalation triggers
+- [ ] Document reviewed and agreed before moving to Stage 5

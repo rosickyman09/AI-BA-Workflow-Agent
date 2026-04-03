@@ -1,0 +1,23 @@
+# Dynamic Word Template Engine - Dependencies
+# These are the packages required by the template engine module.
+# Packages already present in the root .venv are marked with comments.
+
+# Template parsing and filling
+python-docx>=1.1.2          # already in root .venv
+docxtpl>=0.17.0
+
+# Document extraction
+pdfplumber>=0.11.4
+
+# LLM providers
+anthropic>=0.28.0
+openai>=1.35.0
+
+# Web framework (already in root .venv)
+fastapi>=0.104.1
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+
+# Utilities
+lxml>=5.2.2                 # already in root .venv
+python-dotenv>=1.0.0

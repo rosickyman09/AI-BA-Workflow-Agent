@@ -1,0 +1,37 @@
+{
+    "g1":  {
+               "gate":  "Gate 1 - send endpoint",
+               "pass":  true,
+               "detail":  "status=200, shapeOk=True"
+           },
+    "g2":  {
+               "gate":  "Gate 2 - /status command",
+               "pass":  true,
+               "detail":  "status=200, handled=True"
+           },
+    "g3":  {
+               "gate":  "Gate 3 - approval reminders",
+               "pass":  true,
+               "detail":  "status=200, fieldsOk=True"
+           },
+    "g4":  {
+               "gate":  "Gate 4 - workflow files",
+               "pass":  true,
+               "detail":  "filesExist=True, validJson=True, cronC=True, cronD=True, eventE=True"
+           },
+    "g5":  {
+               "gate":  "Gate 5 - import to n8n",
+               "pass":  false,
+               "detail":  "The remote server returned an error: (500) Internal Server Error."
+           },
+    "g6":  {
+               "gate":  "Gate 6 - trigger workflow C",
+               "pass":  false,
+               "detail":  "workflow_c_backlog id unavailable from Gate 5 import"
+           },
+    "g7":  {
+               "gate":  "Gate 7 - env vars present",
+               "pass":  true,
+               "detail":  "TELEGRAM_BOT_TOKEN=True, TELEGRAM_CHAT_ID=True"
+           }
+}

@@ -1,0 +1,19 @@
+/* Layout Styles */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.navbar {
+  margin-bottom: 2rem;
+}
+
+.main {
+  flex: 1;
+}
+
+.footer {
+  margin-top: 3rem;
+  border-top: 1px solid #e0e0e0;
+}

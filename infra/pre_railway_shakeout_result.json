@@ -1,0 +1,191 @@
+[
+    {
+        "Block":  "1",
+        "Gate":  "Admin login",
+        "Expected":  "role:admin",
+        "Result":  "role=admin",
+        "Status":  "???"
+    },
+    {
+        "Block":  "1",
+        "Gate":  "BA login",
+        "Expected":  "role:ba",
+        "Result":  "role=ba",
+        "Status":  "???"
+    },
+    {
+        "Block":  "1",
+        "Gate":  "Owner login",
+        "Expected":  "role:business_owner",
+        "Result":  "role=business_owner",
+        "Status":  "???"
+    },
+    {
+        "Block":  "1",
+        "Gate":  "IT login",
+        "Expected":  "role:it",
+        "Result":  "role=it",
+        "Status":  "???"
+    },
+    {
+        "Block":  "2",
+        "Gate":  "IT upload",
+        "Expected":  "403",
+        "Result":  "http=0",
+        "Status":  "???"
+    },
+    {
+        "Block":  "2",
+        "Gate":  "BA upload",
+        "Expected":  "200",
+        "Result":  "http=0 body=",
+        "Status":  "???"
+    },
+    {
+        "Block":  "2",
+        "Gate":  "Owner approve",
+        "Expected":  "200",
+        "Result":  "missing owner token or workflow_id",
+        "Status":  "???"
+    },
+    {
+        "Block":  "2",
+        "Gate":  "BA approve",
+        "Expected":  "403",
+        "Result":  "missing BA token or workflow_id",
+        "Status":  "???"
+    },
+    {
+        "Block":  "3",
+        "Gate":  "Workflow timing",
+        "Expected":  "\u003c120000ms",
+        "Result":  "http=200 ms=10272 status=completed",
+        "Status":  "???"
+    },
+    {
+        "Block":  "4",
+        "Gate":  "Summarization content",
+        "Expected":  "markdown present",
+        "Result":  "has_markdown=True has_document=True",
+        "Status":  "???"
+    },
+    {
+        "Block":  "4",
+        "Gate":  "Audit logs",
+        "Expected":  "recent entries",
+        "Result":  "rows=5",
+        "Status":  "???"
+    },
+    {
+        "Block":  "5",
+        "Gate":  "Notification send",
+        "Expected":  "200",
+        "Result":  "http=200",
+        "Status":  "???"
+    },
+    {
+        "Block":  "5",
+        "Gate":  "Approval reminder",
+        "Expected":  "200",
+        "Result":  "http=200",
+        "Status":  "???"
+    },
+    {
+        "Block":  "5",
+        "Gate":  "Telegram command",
+        "Expected":  "200",
+        "Result":  "http=200 handled=True",
+        "Status":  "???"
+    },
+    {
+        "Block":  "6",
+        "Gate":  "rag_service restart",
+        "Expected":  "healthy",
+        "Result":  "status=healthy",
+        "Status":  "???"
+    },
+    {
+        "Block":  "6",
+        "Gate":  "backend restart",
+        "Expected":  "healthy",
+        "Result":  "backend=healthy auth=healthy",
+        "Status":  "???"
+    },
+    {
+        "Block":  "6",
+        "Gate":  "Upload after restart",
+        "Expected":  "200",
+        "Result":  "http=200 status=COMPLETED",
+        "Status":  "???"
+    },
+    {
+        "Block":  "6",
+        "Gate":  "Search after restart",
+        "Expected":  "200",
+        "Result":  "http=200 total_found=4",
+        "Status":  "???"
+    },
+    {
+        "Block":  "7",
+        "Gate":  "Frontend via gateway",
+        "Expected":  "200",
+        "Result":  "http=200",
+        "Status":  "???"
+    },
+    {
+        "Block":  "7",
+        "Gate":  "All health endpoints",
+        "Expected":  "healthy",
+        "Result":  "gateway=ok auth=healthy backend=healthy rag=healthy",
+        "Status":  "???"
+    },
+    {
+        "Block":  "7",
+        "Gate":  "Unauth rejection",
+        "Expected":  "401/403",
+        "Result":  "http=403",
+        "Status":  "???"
+    },
+    {
+        "Block":  "8",
+        "Gate":  "Mobile 375px",
+        "Expected":  "no scroll",
+        "Result":  "staticSignals=4/4 noFixedWidth=True",
+        "Status":  "???"
+    },
+    {
+        "Block":  "9",
+        "Gate":  "No secrets in files",
+        "Expected":  "clean",
+        "Result":  "found=C:\\Users\\rosic\\Documents\\GitHub\\AI-BA-Agent\\.env.example:JWT_SECRET;C:\\Users\\rosic\\Documents\\GitHub\\AI-BA-Agent\\infra\\.env:JWT_SECRET;C:\\Users\\rosic\\Documents\\GitHub\\AI-BA-Agent\\infra\\.env:OPENROUTER_API_KEY;C:\\Users\\rosic\\Documents\\GitHub\\AI-BA-Agent\\infra\\.env:DEEPSEEK_API_KEY;C:\\Users\\rosic\\Documents\\GitHub\\AI-BA-Agent\\infra\\.env:ELEVENLABS_API_KEY;C:\\Users\\rosic\\Documents\\GitHub\\AI-BA-Agent\\infra\\.env:TELEGRAM_BOT_TOKEN",
+        "Status":  "???"
+    },
+    {
+        "Block":  "10",
+        "Gate":  "Criterion 1",
+        "Expected":  "COMPLETED",
+        "Result":  "status=COMPLETED",
+        "Status":  "???"
+    },
+    {
+        "Block":  "10",
+        "Gate":  "Criterion 3",
+        "Expected":  "\u003c120000ms",
+        "Result":  "ms=214 status=completed",
+        "Status":  "???"
+    },
+    {
+        "Block":  "10",
+        "Gate":  "Criterion 4",
+        "Expected":  "markdown present",
+        "Result":  "has_markdown=True",
+        "Status":  "???"
+    },
+    {
+        "Block":  "10",
+        "Gate":  "Criterion 12",
+        "Expected":  "IT 403",
+        "Result":  "http=403",
+        "Status":  "???"
+    }
+]

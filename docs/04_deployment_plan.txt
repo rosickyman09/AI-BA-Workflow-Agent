@@ -1,0 +1,746 @@
+DEPLOYMENT PLAN
+===============
+Project: AI BA Agent
+Platform: Railway
+Deployment Method: Docker Compose (local) → Railway (cloud)
+MVP Timeline: Phase 1 (Jan-Mar 2026)
+
+=== DOCKER COMPOSE OVERVIEW ===
+
+Location: /infra/docker-compose.yml (at project root)
+
+Key Features:
+- All services orchestrated in single file
+- Services communicate via Docker network (service-name:port)
+- Volume mounts for data persistence
+- Environment variable configuration
+- Health checks for critical services
+- Multi-stage builds for optimized images
+
+=== SERVICE DOCKERFILE LOCATIONS ===
+
+| Service | Dockerfile | Port |
+|---------|------------|------|
+| Frontend (React) | /frontend/Dockerfile | 3000 |
+| Backend API | /backend/Dockerfile | 5000 |
+| Auth Service | /backend/auth/Dockerfile | 5001 |
+| RAG Service | /backend/rag/Dockerfile | 5002 |
+| Gateway (Nginx) | /infra/docker/nginx/Dockerfile | 80/443 |
+| PostgreSQL | (official image, no Dockerfile) | 5432 |
+| Qdrant | (official image, no Dockerfile) | 6333 |
+| Redis | (official image, no Dockerfile) | 6379 |
+
+=== DOCKERFILE SPECIFICATIONS ===
+
+**Frontend Dockerfile** (/frontend/Dockerfile)
+```dockerfile
+# Build stage
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --frozen-lockfile
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY /frontend/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 3000
+CMD ["nginx", "-g", "daemon off;"]
+```
+Base Image: nginx:1.25-alpine (pinned version)
+Build Cache: Multi-stage for smaller final image
+Node Version: 18-alpine (matches package.json engines)
+
+**Backend API Dockerfile** (/backend/Dockerfile)
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY pyproject.toml poetry.lock ./
+RUN pip install poetry && poetry install --no-dev --no-root
+COPY . .
+RUN poetry install --no-dev
+EXPOSE 5000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:5000/health || exit 1
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+```
+Base Image: python:3.11-slim (pinned version)
+Dependency Management: Poetry with requirements.txt fallback
+Health Check: Liveness probe on /health endpoint
+Port: 5000 (internal)
+
+**Auth Service Dockerfile** (/backend/auth/Dockerfile)
+(Identical to Backend API, different entry point)
+
+**RAG Service Dockerfile** (/backend/rag/Dockerfile)
+(Identical structure, different main.py)
+
+**Nginx Gateway Dockerfile** (/infra/docker/nginx/Dockerfile)
+```dockerfile
+FROM nginx:1.25-alpine
+COPY /infra/docker/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY /infra/docker/nginx/conf.d /etc/nginx/conf.d
+COPY /infra/certs /etc/nginx/certs (optional: for TLS)
+EXPOSE 80 443
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+CMD ["nginx", "-g", "daemon off;"]
+```
+No TLS in Phase 1; Railway handles TLS termination.
+
+=== DOCKER COMPOSE FILE ===
+
+File: /infra/docker-compose.yml
+
+```yaml
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15.2-alpine
+    container_name: ai_ba_postgres
+    environment:
+      POSTGRES_USER: ba_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ai_ba_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ba_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:v1.7.0
+    container_name: ai_ba_qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+
+  # Redis Cache (optional)
+  redis:
+    image: redis:7.0-alpine
+    container_name: ai_ba_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+    profiles:
+      - optional  # Enable with: docker compose --profile optional up
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_ba_backend
+    environment:
+      DATABASE_URL: postgresql://ba_user:${DB_PASSWORD}@postgres:5432/ai_ba_db
+      QDRANT_URL: http://qdrant:6333
+      REDIS_URL: redis://redis:6379
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      AUTH_SERVICE_URL: http://auth:5001
+      RAG_SERVICE_URL: http://rag:5002
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+
+  # Auth Service
+  auth:
+    build:
+      context: ./backend
+      dockerfile: auth/Dockerfile
+    container_name: ai_ba_auth
+    environment:
+      DATABASE_URL: postgresql://ba_user:${DB_PASSWORD}@postgres:5432/ai_ba_db
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRY: 3600
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+
+  # RAG Service
+  rag:
+    build:
+      context: ./backend
+      dockerfile: rag/Dockerfile
+    container_name: ai_ba_rag
+    environment:
+      DATABASE_URL: postgresql://ba_user:${DB_PASSWORD}@postgres:5432/ai_ba_db
+      QDRANT_URL: http://qdrant:6333
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+    ports:
+      - "5002:5002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+
+  # Nginx Gateway
+  gateway:
+    build:
+      context: ./infra/docker/nginx
+      dockerfile: Dockerfile
+    container_name: ai_ba_gateway
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - auth
+      - rag
+    volumes:
+      - ./infra/docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./frontend/build:/usr/share/nginx/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+
+  # Frontend (optional: for development)
+  # In production, frontend is built into gateway image
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai_ba_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:80
+    depends_on:
+      - gateway
+    networks:
+      - ai_ba_network
+    restart: unless-stopped
+    profiles:
+      - dev  # Enable with: docker compose --profile dev up
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  redis_data:
+
+networks:
+  ai_ba_network:
+    driver: bridge
+```
+
+Key Notes:
+- `depends_on` with `condition: service_healthy` ensures startup order
+- `healthcheck` on critical services
+- All services communicate via service-name:port within network
+- Environment variables loaded from `.env` file
+- Volumes for data persistence (databases)
+- `profiles` for optional services (dev, optional)
+
+=== ENVIRONMENT VARIABLES (.env) ===
+
+File: /infra/.env.example (committed to repo for reference)
+File: /infra/.env (NOT committed, local secrets)
+
+Template (.env.example):
+```
+# Database
+DB_PASSWORD=change_me_in_production
+DATABASE_URL=postgresql://ba_user:${DB_PASSWORD}@postgres:5432/ai_ba_db
+
+# Qdrant Vector DB
+QDRANT_API_KEY=your_qdrant_api_key
+QDRANT_URL=http://qdrant:6333
+
+# Redis
+REDIS_URL=redis://redis:6379
+
+# JWT Authentication
+JWT_SECRET=your_super_secret_jwt_key_min_32_chars
+JWT_EXPIRY=3600
+
+# External APIs
+OPENROUTER_API_KEY=your_openrouter_key
+DEEPSEEK_API_KEY=your_deepseek_key
+ELEVENLABS_API_KEY=your_elevenlabs_key
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+
+# Google APIs
+GOOGLE_DRIVE_CREDENTIALS={"type":"service_account",...}
+GMAIL_CREDENTIALS={"type":"service_account",...}
+GOOGLE_SHEETS_CREDENTIALS={"type":"service_account",...}
+
+# n8n (if self-hosted)
+N8N_WEBHOOK_URL=http://n8n:5678/webhook
+
+# Environment
+ENVIRONMENT=development  # or production
+LOG_LEVEL=INFO
+```
+
+For Production:
+- Use AWS Secrets Manager / Railway environment variables
+- Never commit .env
+- Rotate JWT_SECRET periodically
+- Use strong DB_PASSWORD (min 20 chars, mixed)
+- Enable HTTPS (TLS certificates)
+
+=== PORT MAPPINGS ===
+
+| Service | Container Port | External Port | Accessible |
+|---------|---|---|---|
+| Gateway | 80/443 | 80/443 | Yes (public) |
+| Frontend | 3000 | 3000 | DEV only |
+| Backend API | 5000 | 5000 | Internal + DEV |
+| Auth Service | 5001 | 5001 | Internal + DEV |
+| RAG Service | 5002 | 5002 | Internal + DEV |
+| PostgreSQL | 5432 | 5432 | Internal only |
+| Qdrant | 6333 | 6333 | Internal + DEV |
+| Redis | 6379 | 6379 | Internal only |
+
+Production Note:
+- Only Port 80/443 exposed to public
+- All internal ports accessible only within Docker network
+- No direct access to databases from outside
+
+=== DEPLOYMENT STEPS ===
+
+**PHASE 1: LOCAL TESTING (Development)**
+
+Step 1: Prepare Environment
+```bash
+cd /infra
+cp .env.example .env
+# Edit .env with your test values
+nano .env
+```
+
+Step 2: Build Docker Images
+```bash
+docker compose build
+# Output: Successfully built ai_ba_backend, etc.
+```
+
+Step 3: Start Services (Database First)
+```bash
+docker compose up postgres --wait
+# Wait for: "database system is ready to accept connections"
+```
+
+Step 4: Verify Database Health
+```bash
+docker compose exec postgres pg_isready -U ba_user
+# Output: accepting connections
+```
+
+Step 5: Run Database Migrations
+```bash
+docker compose run backend alembic upgrade head
+# Output: "No migrations to run. Current revision is ..."
+```
+
+Step 6: Start All Services
+```bash
+docker compose up
+# All services healthchecks should pass
+```
+
+Step 7: Verify All Services Healthy
+```bash
+docker compose ps
+# STATUS should be "Up (healthy)"
+
+curl http://localhost/health
+# Output: {"status": "ok"}
+```
+
+Step 8: Test Backend Connectivity
+```bash
+curl http://localhost:80/api/health
+# Output: {"service": "backend", "status": "ok"}
+
+curl http://localhost:80/auth/health
+# Output: {"service": "auth", "status": "ok"}
+
+curl http://localhost:80/rag/health
+# Output: {"service": "rag", "status": "ready"}
+```
+
+Step 9: Test Frontend
+```bash
+open http://localhost:80
+# Browser should load login page
+```
+
+Troubleshooting:
+```bash
+# View service logs
+docker compose logs -f backend
+docker compose logs -f postgres
+
+# Restart specific service
+docker compose restart backend
+
+# Rebuild without cache
+docker compose build --no-cache backend
+
+# Clean up everything
+docker compose down -v
+```
+
+**PHASE 2: RAILWAY CLOUD DEPLOYMENT**
+
+Step 1: Create Railway Account & Project
+- Go to railway.app
+- Sign up (free tier available)
+- Create new project
+
+Step 2: Configure Railway Environment Variables
+- In Railway dashboard → Project Settings
+- Add all variables from .env:
+  ```
+  DB_PASSWORD=*** (strong password)
+  JWT_SECRET=*** (strong secret)
+  OPENROUTER_API_KEY=***
+  DEEPSEEK_API_KEY=***
+  ELEVENLABS_API_KEY=***
+  ... (all others)
+  ```
+
+Step 3: Connect Git Repository
+- Connect GitHub repo (AI-BA-Agent)
+- Railway auto-detects `docker-compose.yml`
+- Configure build command: `docker compose build`
+- Configure start command: `docker compose up`
+
+Step 4: Deploy Services in Order
+
+**Step 4a: Deploy Database**
+- Service: postgres
+- Railway auto-creates PostgreSQL instance
+- Configure volume for data persistence
+- Verify: Connection string available in environment
+
+**Step 4b: Run Migrations**
+- Add Railway job (one-time, post-deployment):
+  ```bash
+  docker compose run backend alembic upgrade head
+  ```
+
+**Step 4c: Deploy Backend Services**
+- Services: backend, auth, rag
+- Depends on: postgres, qdrant
+- Wait for health checks to pass
+
+**Step 4d: Deploy Gateway**
+- Service: gateway
+- Expose port 80/443
+- Railway auto-handles TLS certificates
+- Custom domain can be configured
+
+Step 5: Verify Production Deployment
+```bash
+# Get Railway app URL
+https://your-project.railway.app/health
+# Should return: {"status": "ok"}
+
+# Test API endpoints
+https://your-project.railway.app/api/health
+https://your-project.railway.app/auth/health
+https://your-project.railway.app/rag/health
+
+# Test frontend
+https://your-project.railway.app/
+# Should load login page
+```
+
+Step 6: Configure External APIs
+- Add ElevenLabs API key to Railway environment
+- Add OpenRouter key
+- Add DeepSeek key
+- Add Google service account JSON for Drive/Sheets/Gmail
+- Add Telegram bot token
+
+Step 7: Configure n8n Webhooks
+- If using n8n.io (SaaS):
+  - Create workflows in n8n dashboard
+  - Configure webhook URL: `https://your-project.railway.app/n8n/webhook`
+  - Test email trigger, backlog scan
+- If self-hosting n8n:
+  - Deploy n8n container on Railway
+  - Configure webhook URL
+
+=== VERIFICATION CHECKLIST ===
+
+**Local Deployment (Docker Compose)**
+- [ ] All services built successfully
+- [ ] `docker compose ps` shows all containers as "Up (healthy)"
+- [ ] PostgreSQL initialized with schema
+- [ ] Qdrant vector DB responsive
+- [ ] Backend API responds to `GET /health`
+- [ ] Auth service responds to `GET /auth/health`
+- [ ] RAG service responds to `GET /rag/health`
+- [ ] Frontend loads at `http://localhost`
+- [ ] User can login (test credentials)
+- [ ] Can upload test document
+- [ ] Logs show no errors (docker compose logs)
+
+**Cloud Deployment (Railway)**
+- [ ] Railway project created and connected
+- [ ] PostgreSQL database deployed
+- [ ] All environment variables set
+- [ ] Database migrations successful
+- [ ] Backend service healthy (Railway dashboard)
+- [ ] Auth service healthy
+- [ ] RAG service healthy
+- [ ] Gateway healthy and TLS working
+- [ ] Frontend loads at railway.app URL
+- [ ] User can login with cloud database
+- [ ] Document upload triggers n8n workflow
+- [ ] Telegram notification received
+- [ ] RAG search returns results
+
+=== ROLLBACK PROCEDURE ===
+
+**If Local Deployment Fails:**
+```bash
+# Stop all services
+docker compose down
+
+# Clean up volumes (removes data!)
+docker compose down -v
+
+# Rebuild from scratch
+docker compose build --no-cache
+docker compose up postgres --wait
+docker compose up
+
+# Check logs for errors
+docker compose logs --tail=50 backend
+```
+
+**If Cloud Deployment Fails:**
+
+Option 1 (Redeploy):
+- In Railway dashboard, click "Redeploy"
+- Automatically uses last healthy commit
+- Wait for health checks to pass
+
+Option 2 (Rollback to Previous Commit):
+- In Railway dashboard → Deploy → View Deploys
+- Select previous successful deployment
+- Click "Rollback"
+- Wait for services to restart
+
+Option 3 (Manual Rollback):
+- Push previous version to git main branch
+- Railway auto-redeploys
+- Or delete failed deployment and redeploy previous tag
+
+**Data Backup Strategy:**
+- PostgreSQL: Railway auto-backups daily
+- Qdrant: Volume snapshots enabled
+- Manual backup (before major changes):
+  ```bash
+  docker compose exec postgres pg_dump -U ba_user ai_ba_db > backup.sql
+  ```
+
+=== HEALTH CHECK DEFINITIONS ===
+
+Each critical service includes health check:
+
+**PostgreSQL Health Check:**
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U ba_user"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+```
+Success: Returns 0 (accepting connections)
+
+**Qdrant Health Check:**
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
+Success: HTTP 200 + `{"status":"ok"}`
+
+**Backend API Health Check:**
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+```
+Success: HTTP 200 + `{"status":"healthy"}`
+
+If health check fails 3 times, Docker marks container "unhealthy" but keeps running.
+Railway auto-restarts unhealthy containers.
+
+=== DEPENDENCY VERSION LOCK ===
+
+All versions must be pinned (not floating):
+
+**Python (Backend)**
+```
+# requirements.txt (NOT >=, use ==)
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+sqlalchemy==2.0.23
+langchain==0.1.0
+crewai==0.3.12
+qdrant-client==2.7.0
+```
+
+**Node.js (Frontend)**
+```json
+{
+  "dependencies": {
+    "react": "18.2.0",
+    "next": "14.0.4",
+    "tailwindcss": "3.3.6"
+  }
+}
+```
+
+**Docker Images**
+```
+postgres:15.2-alpine         (pinned, not 15-latest)
+qdrant:v1.7.0                (pinned version)
+redis:7.0-alpine             (pinned, not latest)
+nginx:1.25-alpine            (pinned, not latest)
+python:3.11-slim             (pinned, not 3.11-latest)
+node:18-alpine               (pinned, not 18-latest)
+```
+
+Build Verification:
+```bash
+# After build, verify no version conflicts
+pip check
+npm audit --production
+docker compose up --no-start  # Validate compose file
+```
+
+=== DEPLOYMENT TIMELINE ===
+
+| Phase | Task | Duration | Owner | Status |
+|-------|------|----------|-------|--------|
+| Prep | Setup local dev environment | 2 hours | DevOps | Not started |
+| Local | Build & test all services locally | 4 hours | Engineering | Not started |
+| Local | Full end-to-end functional test | 2 hours | QA | Not started |
+| Cloud | Create Railway project | 30 min | DevOps | Not started |
+| Cloud | Deploy database, run migrations | 1 hour | DevOps | Not started |
+| Cloud | Deploy backend services | 1 hour | Engineering | Not started |
+| Cloud | Deploy gateway & frontend | 1 hour | Frontend | Not started |
+| Cloud | Configure external API integrations | 2 hours | Engineering | Not started |
+| Test | Cloud end-to-end testing | 2 hours | QA | Not started |
+| Go-live | Production testing, sign-off | 1 hour | Product | Not started |
+
+Total Estimated Timeline: 16 hours over 3-4 business days
+
+=== MONITORING & ALERTS ===
+
+Post-Deployment Monitoring:
+
+**Application Health:**
+- Monitor `/health` endpoints every 5 minutes
+- Alert if any service unhealthy for >2 minutes
+- Dashboard: Railway → Observability
+
+**Database Monitoring:**
+- PostgreSQL disk usage (alert if >80%)
+- Connection pool usage
+- Slow query log
+
+**Resource Usage:**
+- CPU usage per service (alert if >75%)
+- Memory usage (alert if >85%)
+- Bandwidth/network I/O
+
+**Error Rates:**
+- API error rate (alert if >5%)
+- Authentication failures (alert if spike)
+- Document processing failures (log + review daily)
+
+**Business Metrics:**
+- Documents processed per day
+- Average processing time (target: <2 min)
+- User login attempts / failures
+- RAG search latency (target: <500ms)
+
+Enable Railway monitoring:
+- Dashboard → Observability → Enable metrics
+- Set up Slack alerts for critical events

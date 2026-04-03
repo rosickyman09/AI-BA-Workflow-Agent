@@ -1,0 +1,543 @@
+SYSTEM ARCHITECTURE
+===================
+Project: AI BA Agent
+Version: 1.0 (MVP Phase 1)
+Date: 2026-03-14
+
+=== ARCHITECTURE OVERVIEW ===
+Type: Microservices + Serverless (hybrid)
+Pattern: Backend-for-Frontend (BFF) + RAG-enabled AI service
+Gateway: Required (single-port entry point)
+Deployment: Docker Compose (multi-container)
+Port Strategy: Multi-port (separate service ports, gateway routes externally)
+
+=== SYSTEM COMPONENTS ===
+
+┌─────────────────────────────────────────────────────────┐
+│                    CLIENT LAYER                         │
+├─────────────────────────────────────────────────────────┤
+│ Web App (React + Next.js)          Port 3000            │
+│ - Meeting upload UI                                     │
+│ - Document viewer & version history                     │
+│ - Approval dashboard                                    │
+│ - RAG chatbot interface                                 │
+│                                                         │
+│ Telegram Bot (n8n webhook)         Port 8080 (n8n)     │
+│ - Query RAG knowledge base                              │
+│ - Receive backlog notifications                         │
+│ - Status updates                                        │
+└────────────────┬────────────────────────────────────────┘
+                 │
+                 ↓
+┌─────────────────────────────────────────────────────────┐
+│              API GATEWAY & ROUTING                       │
+├─────────────────────────────────────────────────────────┤
+│ Nginx Reverse Proxy                 Port 80/443         │
+│ - Single external entry point                           │
+│ - Route /api/* → Backend API                            │
+│ - Route /auth/* → Auth Service                          │
+│ - Route /rag/* → RAG Service                            │
+│ - TLS termination                                       │
+│ - Rate limiting & access logging                        │
+└────────────────┬────────────────────────────────────────┘
+                 │
+        ┌────────┴────────┬──────────────┬────────────┐
+        ↓                 ↓              ↓            ↓
+┌──────────────┐  ┌──────────────┐ ┌──────────┐  ┌────────────┐
+│   BACKEND    │  │     AUTH     │ │   RAG    │  │   n8n      │
+│   SERVICE    │  │   SERVICE    │ │  SERVICE │  │  WORKFLOW  │
+├──────────────┤  ├──────────────┤ ├──────────┤  ├────────────┤
+│              │  │              │ │          │  │            │
+│ Python       │  │ Python       │ │ Python   │  │ No-code    │
+│ FastAPI      │  │ FastAPI +    │ │ FastAPI  │  │ engine     │
+│ Port: 5000   │  │ JWT          │ │ Port:    │  │ Port: 8080 │
+│              │  │ Port: 5001   │ │ 5002     │  │            │
+│ Services:    │  │              │ │          │  │ Services:  │
+│ - STT via    │  │ - Login/Auth │ │ LangChain│  │ - Email    │
+│   ElevenLabs │  │ - Token mgmt │ │ Qdrant   │  │   trigger  │
+│   Scribe v2  │  │ - User mgmt  │ │ Vector   │  │ - Cron     │
+│ - LLM calls  │  │ - Permission │ │ DB ops   │  │   backlog  │
+│   (via API)  │  │   checks     │ │ CrewAI   │  │ - STT      │
+│ - Doc gen    │  │              │ │ agents   │  │   webhook  │
+│ - Upload     │  │              │ │ RAG      │  │ - Notif    │
+│   mgmt       │  │              │ │ searches │  │   dispatch │
+│              │  │              │ │          │  │            │
+└──────────────┘  └──────────────┘ └──────────┘  └────────────┘
+        │                 │              │            │
+        └────────────────┬─┴──────────────┴────────────┘
+                         ↓
+        ┌────────────────────────────────┐
+        │       DATA PERSISTENCE         │
+        ├────────────────────────────────┤
+        │                                │
+        │ PostgreSQL (Port 5432)         │
+        │ - User accounts & projects     │
+        │ - Document metadata            │
+        │ - Approval workflows           │
+        │ - Audit logs                   │
+        │ - File tracking               │
+        │                                │
+        │ Qdrant Vector DB (Port 6333)   │
+        │ - RAG knowledge base           │
+        │ - Vector embeddings            │
+        │ - Project-scoped collections   │
+        │ - Fast semantic search         │
+        │                                │
+        │ Redis (Port 6379) - OPTIONAL   │
+        │ - Session caching              │
+        │ - Rate limit counters          │
+        │                                │
+        │ Google Drive (External API)    │
+        │ - Document storage             │
+        │ - Version history              │
+        │                                │
+        │ Google Sheets (External API)   │
+        │ - Backlog tracking             │
+        │ - Issue status updates         │
+        │                                │
+        └────────────────────────────────┘
+
+=== SERVICE RESPONSIBILITIES ===
+
+**1. BACKEND API SERVICE (Port 5000)**
+Language: Python 3.11
+Framework: FastAPI
+Responsibilities:
+- Receive document uploads (recording, email, document)
+- Coordinate STT via ElevenLabs Scribe v2 API
+- Call CrewAI agents for data extraction + summarization
+- Manage document versioning & storage
+- Expose REST endpoints for frontend
+- Audit logging for all operations
+
+Key Endpoints:
+  POST   /api/documents/upload        Upload recording / document
+  POST   /api/documents/process        Trigger processing pipeline
+  GET    /api/documents/{id}           Retrieve document + versions
+  GET    /api/documents/{id}/versions  List all versions
+  POST   /api/approval/submit          Submit for approval
+  GET    /api/approval/status          Check approval status
+  POST   /api/audit/logs               Query audit trail
+
+**2. AUTH SERVICE (Port 5001)**
+Language: Python 3.11
+Framework: FastAPI + JWT
+Responsibilities:
+- User login/logout
+- Token generation & refresh
+- Role-based access control (RBAC)
+- Project-level permission checks
+- Two-factor authentication (optional Phase 2)
+
+Key Endpoints:
+  POST   /auth/login                   Authenticate user
+  POST   /auth/refresh                 Renew token
+  GET    /auth/me                      Current user info
+  GET    /auth/permissions             User's permissions by project
+
+**3. RAG SERVICE (Port 5002)**
+Language: Python 3.11
+Framework: FastAPI + LangChain
+Responsibilities:
+- Manage RAG knowledge base in Qdrant
+- Index documents into vector DB
+- Similarity search across project scope
+- Answer user questions with source citations
+- Maintain project-scoped memory boundaries
+
+Key Endpoints:
+  POST   /rag/index                    Add document to KB
+  GET    /rag/search                   Semantic search
+  POST   /rag/chat                     Query chatbot
+  GET    /rag/sources/{doc_id}         Retrieve source evidence
+
+**4. GATEWAY (Port 80/443)**
+Type: Nginx Reverse Proxy
+Responsibilities:
+- Single entry point for all client requests
+- Route traffic to appropriate backend service
+- SSL/TLS termination
+- Rate limiting & DDoS protection
+- Request logging & access control
+- Static frontend asset serving
+
+Routes:
+  / → Frontend (static)
+  /api/* → Backend API (5000)
+  /auth/* → Auth Service (5001)
+  /rag/* → RAG Service (5002)
+  /health → Health check endpoint
+
+**5. n8n WORKFLOW ENGINE (Port 8080)**
+Type: No-code workflow automation
+Responsibilities:
+- Listen for Gmail triggers
+- Poll Google Sheets for backlog status
+- Execute daily/weekly cron jobs
+- Dispatch Telegram notifications
+- Handle ElevenLabs webhook callbacks (STT complete)
+- Manage inter-service orchestration
+
+Workflows:
+  - Email ingestion trigger
+  - Backlog scanning & notification
+  - Weekly report generation
+  - STT webhook receiver
+
+**6. DATABASE LAYER**
+
+PostgreSQL (Port 5432)
+- Primary relational database
+- Tables:
+  * users (user_id, email, role, created_at, updated_at)
+  * projects (project_id, name, owner, created_at, access_level)
+  * documents (doc_id, project_id, title, type, upload_time, status)
+  * document_versions (version_id, doc_id, version_num, content_hash, created_by, approval_status)
+  * audit_logs (log_id, action, user_id, doc_id, timestamp, details)
+  * approval_workflows (workflow_id, doc_id, status, approvers, current_step)
+  * user_permissions (user_id, project_id, role, granted_by, granted_at)
+
+Qdrant Vector DB (Port 6333)
+- Purpose: RAG knowledge base
+- Collections:
+  * documents_embeddings (project_id: partition key, doc_id, title, content_vector, metadata)
+  * query_cache (recent user queries, response pairs)
+- Search: Cosine similarity, filtered by project_id
+- Replication: Optional (Phase 2 for HA)
+
+Redis (Port 6379) - OPTIONAL
+- Session storage
+- Rate limit tracking
+- Real-time notification pub/sub
+
+=== DATA FLOW ===
+
+**Scenario 1: User Uploads Meeting Recording**
+┌─────────────┐
+│ User uploads│ (React UI)
+│ recording   │
+└──────┬──────┘
+       │ POST /api/documents/upload
+       ↓
+   ┌─────────────┐
+   │   Gateway   │ (Nginx)
+   └──────┬──────┘
+          │ forward to
+          ↓
+   ┌─────────────────────┐
+   │  Backend API (5000) │
+   └──────┬──────────────┘
+          │
+          ├─→ 1. Store metadata in PostgreSQL
+          │      (doc_id, project_id, status=PENDING)
+          │
+          ├─→ 2. Upload file to Google Drive
+          │
+          ├─→ 3. Call ElevenLabs Scribe v2 API
+          │      (return transcript via webhook)
+          │
+          └—→ 4. Return upload_id to client
+               (client polls /api/documents/{id} for progress)
+       
+       [async] ElevenLabs Scribe v2
+       │  ├─→ Transcribe audio
+       │  ├─→ Speaker Diarization
+       │  ├─→ Keyterm Prompting
+       │  └─→ Webhook POST to n8n
+       │
+       n8n receives webhook
+       ↓
+       ├─→ Trigger Backend: POST /api/documents/{id}/process
+       │
+       Backend: CrewAI pipeline
+       ├─→ Data Extraction Agent (extract action items, decisions)
+       ├─→ Summarization Agent (generate meeting minutes)
+       ├─→ RAG Verification Agent (check similar past docs)
+       ├─→ Validation Agent (flag high-risk)
+       │
+       ├─→ Store version_v1 in PostgreSQL
+       ├─→ Index to Qdrant (RAG)
+       ├─→ Store draft document in Google Drive
+       │
+       └─→ Notify user: "Document ready for approval"
+           (Email / Web notification)
+
+**Scenario 2: User Queries RAG Chatbot**
+┌─────────────┐
+│ User asks   │ (Telegram or Web UI)
+│ question    │
+└──────┬──────┘
+       │ GET /rag/search?q=...
+       ↓
+   ┌─────────────┐
+   │   Gateway   │
+   └──────┬──────┘
+          │
+          ↓
+   ┌──────────────────┐
+   │  RAG Service     │ (5002)
+   └──────┬───────────┘
+          │
+          ├─→ 1. Embed user query
+          │      (LangChain with chosen LLM)
+          │
+          ├─→ 2. Query Qdrant
+          │      (cosine similarity, filter by project_id)
+          │
+          ├─→ 3. ReRank results
+          │      (relevance + recency)
+          │
+          ├─→ 4. Call CrewAI RAG Verification Agent
+          │      (check confidence, cite sources)
+          │
+          ├─→ 5. Call LLM (CrewAI) to answer
+          │      (with context from knowledge base)
+          │
+          └─→ 6. Return answer + source links
+               [CITATION: doc_id#section]
+
+**Scenario 3: Daily Backlog Scan (Cron-triggered)**
+┌──────────────────────┐
+│ Cron: 8 AM daily     │ (n8n scheduler)
+└──────┬───────────────┘
+       │
+       ├─→ Poll Google Sheets
+       │    (filter status=Blocked, Overdue, Waiting)
+       │
+       ├─→ Query PostgreSQL
+       │    (get project_id, owner, approver)
+       │
+       ├─→ Call Summarization Agent
+       │    (format weekly digest)
+       │
+       ├─→ Send Telegram notification
+       │    (to owner @username)
+       │
+       └─→ Log event in audit_logs
+
+=== EXTERNAL INTEGRATIONS ===
+
+| System | Type | Protocol | Purpose |
+|--------|------|----------|---------|
+| ElevenLabs Scribe v2 | STT API | REST + Webhook | Transcribe audio, speaker ID |
+| OpenRouter API | LLM | REST | Access multiple LLM models |
+| DeepSeek API | LLM | REST | Fallback LLM (Chinese-optimized) |
+| Google Drive | Storage | API | Store documents & versions |
+| Gmail | Email | API | Trigger email ingestion |
+| Google Sheets | Backlog | API | Read/write backlog status |
+| Telegram | Notification | Bot API | Send alerts, receive queries |
+| Deepgram | STT (backup) | REST + Webhook | Fallback transcription |
+
+=== CONTAINERIZATION STRATEGY ===
+
+All major services are containerized. No container-in-container required.
+
+Services to containerize:
+✓ Frontend (Node.js build → Nginx serving static)
+✓ Backend API (Python FastAPI)
+✓ Auth Service (Python FastAPI)
+✓ RAG Service (Python FastAPI + LangChain)
+✓ Gateway (Nginx reverse proxy)
+✓ PostgreSQL (official PostgreSQL image)
+✓ Qdrant (official Qdrant image)
+✓ Redis (official Redis image, optional)
+
+Services NOT containerized (external):
+- n8n (if using SaaS n8n.io, otherwise containerize)
+- ElevenLabs (external API)
+- Google Drive / Sheets / Gmail (external APIs)
+- OpenRouter / DeepSeek (external APIs)
+- Telegram (external API)
+
+=== PORT ALLOCATION ===
+
+| Service | Container Port | Host Port | Purpose |
+|---------|---|---|---|
+| Nginx Gateway | 80, 443 | 80, 443 | External HTTPS entry |
+| Frontend (React) | 3000 | 3000 | Web UI (static via Nginx) |
+| Backend API | 5000 | 5000 | REST API endpoints |
+| Auth Service | 5001 | 5001 | Authentication |
+| RAG Service | 5002 | 5002 | RAG/Search endpoints |
+| PostgreSQL | 5432 | 5432 | Database |
+| Qdrant | 6333 | 6333 | Vector DB |
+| Redis | 6379 | 6379 | Session/cache (optional) |
+| n8n | 5678 | 5678 | Workflow UI + webhooks |
+
+Gateway Routing:
+```
+External (Port 80/443)
+├─ GET  /            → Frontend (Nginx static files)
+├─ /api/*            → Backend API (5000)
+├─ /auth/*           → Auth Service (5001)
+├─ /rag/*            → RAG Service (5002)
+├─ /n8n/*            → n8n (5678)
+└─ /health           → Health check (200 OK)
+```
+
+=== DEPLOYMENT SEQUENCE ===
+
+1. **Database Layer** (PostgreSQL, Qdrant, Redis)
+   - Must be deployed first
+   - Run migrations to initialize schema
+   - Other services depend on database connectivity
+
+2. **Backend Services** (Auth, Backend API, RAG)
+   - Depends on: Database layer
+   - Can be deployed in parallel
+   - Requires database connection string, API keys
+
+3. **n8n Workflow Engine** (if self-hosted)
+   - Depends on: Backend services (for webhooks)
+   - Configure n8n workflows after backend is accessible
+
+4. **Frontend** (React + Nginx)
+   - Depends on: Backend API reachable
+   - Build optimized static assets
+   - Configure API endpoint URLs
+
+5. **Gateway** (Nginx)
+   - Last to deploy
+   - Route all traffic after all services are healthy
+   - TLS certificates must be in place
+
+=== SINGLE-PORT vs MULTI-PORT DECISION ===
+
+**Decision: MULTI-PORT (with Gateway)**
+
+Justification:
+- Services are independent (clarity of responsibility)
+- Easier local development (each dev runs services individually)
+- Easier scaling (deploy specific service without restarting all)
+- Easier debugging (check each service health independently)
+- Backend services need internal communication (5000 ↔ 5002 for RAG calls)
+
+Gateway handles:
+- Single external entry point (Port 80/443)
+- Internal routing to backend services
+- TLS termination
+- Rate limiting
+- Access logging
+
+=== GATEWAY ARCHITECTURE ===
+
+Technology: Nginx (reverse proxy)
+
+Configuration:
+```yaml
+# Nginx runs in container on Port 80/443
+# Routes:
+#   / → Frontend static files
+#   /api/* → Backend API (5000)
+#   /auth/* → Auth Service (5001)
+#   /rag/* → RAG Service (5002)
+#   /health → 200 OK (liveness probe)
+
+upstream backend {
+  server backend:5000;
+}
+
+upstream auth {
+  server auth:5001;
+}
+
+upstream rag {
+  server rag:5002;
+}
+
+server {
+  listen 80;
+  listen 443 ssl;
+  
+  # TLS config
+  ssl_certificate /etc/nginx/certs/cert.pem;
+  ssl_certificate_key /etc/nginx/certs/key.pem;
+  
+  # Redirect HTTP to HTTPS
+  if ($scheme != "https") {
+    return 301 https://$server_name$request_uri;
+  }
+  
+  # Frontend (static)
+  location / {
+    root /usr/share/nginx/html;
+    try_files $uri /index.html;
+  }
+  
+  # Backend API
+  location /api/ {
+    proxy_pass http://backend;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+  }
+  
+  # Auth Service
+  location /auth/ {
+    proxy_pass http://auth;
+  }
+  
+  # RAG Service
+  location /rag/ {
+    proxy_pass http://rag;
+    # WebSocket support for real-time chat
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+  }
+  
+  # Health check
+  location /health {
+    return 200 "OK";
+  }
+}
+```
+
+=== SECURITY ARCHITECTURE ===
+
+**Authentication Flow:**
+1. User login at /auth/login (username + password)
+2. Auth Service validates, returns JWT token
+3. Frontend stores token in secure httpOnly cookie
+4. All API requests include Authorization: Bearer {token}
+5. Backend validates token signature & expiry
+6. Backend checks user role & project permissions
+
+**Authorization (RBAC):**
+- Admin: Full access to all projects, user management
+- BA / PM / Tech Lead: Standard user, can view/edit own project documents
+- Business Owner / Legal: Can approve documents in assigned projects
+- IT: Read-only access across all projects
+
+**Data Protection:**
+- PII masking per role (e.g., phone numbers → ****-****-**)
+- Encrypted storage for sensitive fields (contracts, financial data)
+- Audit logging: Every action logged with user, timestamp, details
+- Access logs: All API requests logged with user, IP, endpoint
+- Retention: Audit logs retained for 12 months minimum
+
+=== FUTURE EXTENSIBILITY ===
+
+1. **Horizontal Scaling:**
+   - Each service can scale independently (multiple replicas)
+   - Load balancer distributes requests
+   - PostgreSQL read replicas for query scaling
+   - Qdrant enterprise with clustering
+
+2. **New Services:**
+   - New microservices added behind gateway
+   - Service discovery via Docker network
+   - No changes to frontend routing logic
+
+3. **Enhanced RAG:**
+   - Qdrant clustering for higher availability
+   - Support for multiple vector models (multi-embedding)
+   - Advanced reranking algorithms
+
+4. **Advanced AI:**
+   - Fine-tuned LLM for domain-specific tasks
+   - Multi-modal support (PDF + image + table extraction)
+   - Real-time streaming responses
+
+5. **Analytics & Monitoring:**
+   - Prometheus metrics collection
+   - Grafana dashboards
+   - ELK stack for centralized logging

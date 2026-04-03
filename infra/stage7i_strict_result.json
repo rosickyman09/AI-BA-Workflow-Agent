@@ -1,0 +1,37 @@
+{
+    "g1":  {
+               "gate":  "Gate 1 - Real Login",
+               "pass":  true,
+               "detail":  "status=200, httpOnly=True, noLocalStorageToken=True, role=admin"
+           },
+    "g2":  {
+               "gate":  "Gate 2 - Upload + Polling",
+               "pass":  true,
+               "detail":  "document_id=3bb90760-c6a2-48a9-87ec-8bc32d8adf9a, polls=1, finalStatus=COMPLETED"
+           },
+    "g3":  {
+               "gate":  "Gate 3 - Approval RBAC",
+               "pass":  true,
+               "detail":  "baRole=ba, ownerRole=business_owner, roleConditionInUI=True"
+           },
+    "g4":  {
+               "gate":  "Gate 4 - RAG + Citations",
+               "pass":  true,
+               "detail":  "resultsCount=1, citationFormatOk=True"
+           },
+    "g5":  {
+               "gate":  "Gate 5 - KB Versions",
+               "pass":  true,
+               "detail":  "docCount=7, versionExpandableOk=True"
+           },
+    "g6":  {
+               "gate":  "Gate 6 - Mobile Responsive",
+               "pass":  true,
+               "detail":  "responsiveSignals=4/4, noFixedPageWidth=True"
+           },
+    "g7":  {
+               "gate":  "Gate 7 - Logout",
+               "pass":  true,
+               "detail":  "cookieCleared=True, meBlockedAfterLogout=True"
+           }
+}

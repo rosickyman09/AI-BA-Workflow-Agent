@@ -1,0 +1,193 @@
+AI AGENT ARCHITECTURE
+=====================
+Project: AI BA Agent
+Orchestrator: CrewAI (multi-agent team framework)
+LLM Backends: OpenRouter (primary) + DeepSeek (fallback, Chinese-optimized)
+
+=== CORE AI AGENTS ===
+
+1. ROUTING AGENT
+   Role: Entry point for all user queries
+   Responsibility:
+   - Determine which specialized agent handles the user request
+   - Route STT transcripts, document uploads, RAG queries, status checks to appropriate agent
+   - Maintain conversation context across handoffs
+   Constraints:
+   - Must never process legal/financial content directly (route to Validation Agent)
+   - Cannot modify user input (pass to Data Extraction Agent if cleaning needed)
+
+2. DATA EXTRACTION AGENT
+   Role: Extract structured information from unstructured inputs
+   Responsibility:
+   - Parse meeting transcripts for Action Items, decisions, stakeholders
+   - Extract requirements from emails and documents
+   - Identify speaker roles from diarization data
+   - Handle OCR if document images provided
+   Constraints:
+   - Must preserve original text for audit trail
+   - Cannot infer missing information (flag as "needs confirmation")
+   - Cannot make approval decisions
+
+3. RAG VERIFICATION AGENT
+   Role: Ensure AI responses are grounded in knowledge base
+   Responsibility:
+   - Verify that generated documents reference source materials
+   - Search vector DB (Qdrant) for relevant past documents within project scope
+   - Identify gaps where data is insufficient
+   - Prevent hallucinations (cite sources or flag as unverified)
+   Constraints:
+   - Only search within project-scoped boundaries
+   - Cannot approve documents (flag to Validation Agent)
+   - Must track source document IDs and versions for audit
+
+4. SUMMARIZATION AGENT
+   Role: Condense long-form content
+   Responsibility:
+   - Create meeting minutes from transcripts
+   - Summarize action items with ownership
+   - Generate weekly digest reports from backlog
+   - Create BRD/URS drafts with executive summary
+   Constraints:
+   - Must preserve all financial figures / legal terms verbatim
+   - Cannot omit risk items
+   - Must tag high-risk content for Validation Agent review
+
+5. VALIDATION AGENT
+   Role: Quality gate before human review
+   Responsibility:
+   - Check AI output format and completeness
+   - Identify legal/financial/high-risk content requiring human approval
+   - Apply business rules (e.g., all contracts need Legal review)
+   - Generate confidence scores for generated content
+   Constraints:
+   - Must not approve content (only flag for human)
+   - Cannot modify validated output
+   - Must create detailed validation reports with reasoning
+
+6. MEMORY AGENT
+   Role: Maintain conversation context across sessions
+   Responsibility:
+   - Store user conversation history per project
+   - Retrieve relevant past decisions/context for current query
+   - Maintain user preferences (language, approval thresholds)
+   - Support "continue from last session" feature
+   Constraints:
+   - Cannot expose memory of other projects to user
+   - Must respect role-based access (e.g., Legal users don't see BA-only notes)
+   - Memory purged after retention policy period
+
+7. PROMPT INJECTION PREVENTION AGENT
+   Role: Security gate for all user inputs
+   Responsibility:
+   - Detect adversarial input patterns
+   - Block attempts to manipulate system behavior via prompt injection
+   - Log security events for audit trail
+   Constraints:
+   - Must not silently drop user input
+   - Must provide clear error message (logged but user-friendly)
+
+=== SUB-AGENTS (OPTIONAL, PHASE 2) ===
+- Contract Analysis Agent (Workflow D)
+- Cost Analysis Agent
+- Translation Agent (Chinese ↔ English)
+
+=== AI WORKFLOW ORCHESTRATION ===
+
+Workflow A: Document Ingestion & BRD Generation
+┌─────────────────────────────────────┐
+│ User Input: Recording / Email / Doc  │
+└──────────────┬──────────────────────┘
+               ↓
+         ROUTING AGENT
+               ↓
+         DATA EXTRACTION AGENT (extract metadata, content)
+               ↓
+         RAG VERIFICATION AGENT (check past docs in knowledge base)
+               ↓
+         SUMMARIZATION AGENT (generate meeting minutes + BRD draft)
+               ↓
+         VALIDATION AGENT (check format, flag high-risk)
+               ↓
+    HUMAN-IN-THE-LOOP: Manual Review
+               ↓
+         n8n: Storage to Qdrant + Google Drive
+               ↓
+         MEMORY AGENT: Index for future queries
+
+Workflow B: Email Ingestion (Sub-workflow)
+┌─────────────────────────────────────┐
+│ Gmail Trigger (n8n)                 │
+└──────────────┬──────────────────────┘
+               ↓
+         DATA EXTRACTION AGENT (extract thread, stakeholders)
+               ↓
+    HUMAN-IN-THE-LOOP: BA selects "Include=Yes"
+               ↓
+         RAG VERIFICATION AGENT (similar documents?)
+         SUMMARIZATION AGENT (extract requirements)
+               ↓
+         VALIDATION AGENT (flag legal/financial)
+               ↓
+         n8n: Index to Qdrant
+
+Workflow C: Backlog Follow-up (Cron-triggered)
+┌─────────────────────────────────────┐
+│ Cron Job (Daily @ 8 AM)             │
+│ Scan Google Sheets for Blocked/     │
+│ Overdue/Waiting Approval items      │
+└──────────────┬──────────────────────┘
+               ↓
+         MEMORY AGENT (retrieve owner contact, project context)
+               ↓
+         SUMMARIZATION AGENT (format weekly digest)
+               ↓
+         n8n: Telegram Notification to owner
+               ↓
+    HUMAN: Review & Update status
+
+=== PROMPT ENGINEERING RULES ===
+
+System Prompt (applied to all agents):
+  "You are a Business Analyst AI assistant. Your role is to help organize and structure business information with precision.
+  - Always cite sources (document ID, section, date)
+  - Never invent information (flag gaps with '### NEEDS CONFIRMATION')
+  - Preserve original financial/legal text verbatim
+  - Use Traditional Chinese (繁體中文) for UI, English for technical terms
+  - Tag high-risk items with [HIGH-RISK: <reason>] for human review"
+
+Agent-Specific Constraints:
+  - RAG Verification Agent: "Search knowledge base. If insufficient match (<60% confidence), return 'Insufficient data in knowledge base' + [NEEDS CONFIRMATION]"
+  - Validation Agent: "Do NOT approve. Only flag issues with reasoning and confidence scores."
+  - Data Extraction Agent: "Preserve exact original text. Create separate 'extracted summary' field."
+  - Summarization Agent: "Keep all numbers/dates/names. Omit only repetition."
+
+=== LLM MODEL SELECTION ===
+Primary: OpenRouter (flexible multi-model access)
+  - Default: GPT-4 or DeepSeek (for cost vs quality balance)
+  - Fallback: DeepSeek (strong Chinese support, cost-effective)
+Fallback: DeepSeek directly (if OpenRouter unavailable)
+
+Token Budget: No hard limit, but log all usage and flag if exceeding 100k tokens/day
+
+=== WHAT COPILOT/AI SHOULD NOT DO ===
+- Do NOT auto-approve any document (must route to Validation Agent first, then human)
+- Do NOT modify user input without logging
+- Do NOT search knowledge base outside project scope
+- Do NOT make assumptions about PII (flag for masking)
+- Do NOT delete versions (maintain immutable audit trail)
+- Do NOT communicate directly with external systems outside n8n orchestration
+- Do NOT process legal documents without Validation Agent review
+
+=== HANDOFF POINTS ===
+Agent → Human:
+  - Validation Agent flags high-risk → Manual approval via web UI
+  - Insufficient data detected → "### NEEDS CONFIRMATION" list sent to BA
+
+Agent → n8n:
+  - Approval result → Store version + audit log to DB
+  - Notification needed → Send Telegram message
+  - Schedule required → Cron job updated
+
+Human → Agent:
+  - Approval decision → Update KB and trigger next workflow step
+  - Additional context provided → Re-run extraction with new context

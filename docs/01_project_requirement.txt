@@ -1,0 +1,131 @@
+PROJECT REQUIREMENT SUMMARY
+===========================
+Project Name: AI 智能業務助理 (AI BA Agent)
+Created: 2026-03-14
+Status: MVP Phase 1
+
+=== PROJECT GOAL ===
+Automate transformation of meeting recordings, emails, and documents into:
+- Structured meeting minutes
+- Business Requirements Documents (BRD/URS) drafts
+- Contract & Terms drafts
+With support for version control, approval workflows, searchable RAG knowledge base
+to reduce BA document preparation and communication follow-up time.
+
+=== TARGET USERS ===
+- Business Analyst / IT BA
+- Project Manager / Scrum Master
+- Technical Lead / Architect
+- Business Owner / Stakeholder
+- Compliance / Legal
+- IT colleagues (read-only queries)
+
+=== PLATFORMS ===
+- Web App (installable on mobile home screen)
+- Telegram Bot (for chatbot queries)
+
+=== USER COUNT ===
+Internal company team use (BA, PM, Tech Lead, Business Owner, Legal, etc.)
+
+=== PRIORITY 1 (MUST-HAVE) ===
+1. Meeting recording, email, and document input
+   - STT via ElevenLabs Scribe v2
+   - Speaker Diarization
+   - Keyterm Prompting for business terminology
+   - Webhook callback to n8n
+
+2. Automatic structured document generation
+   - Meeting minutes
+   - Action Items
+   - Business Requirements (BRD/URS) drafts
+
+3. Version control & approval workflow
+   - Configurable approval process
+   - Complete audit logs
+
+4. RAG Knowledge Base
+   - Project-scoped organization
+   - Chatbot query support with source citation
+
+5. Backlog / Follow-up Management
+   - Daily Cron scanning of status
+   - Telegram owner notifications
+   - Weekly auto-generated reports
+
+6. Human-in-the-loop confirmation
+   - All legal, financial, and high-risk content requires manual approval
+
+=== PRIORITY 2 (NICE-TO-HAVE) ===
+- Contract / Terms review and risk flagging (Phase 2)
+- Cost analysis functionality (Phase 2)
+- All AI outputs include original text evidence references
+- Auto-generated confirmation checklist when data is insufficient
+
+=== TECHNOLOGY STACK (CONFIRMED) ===
+Frontend:
+  - Framework: React + Next.js (recommended for Web App)
+  - UI: Bootstrap + Tailwind CSS
+  - Language: JavaScript/TypeScript
+  - Interface: Web App with responsive design
+
+Backend:
+  - Language: Python
+  - Framework: FastAPI (recommended)
+  - Core Services: STT processing, LLM calls, RAG vector library, document generation
+
+Databases:
+  - Relational: PostgreSQL
+  - Vector DB: Qdrant (for RAG, project-scoped)
+  - Tracking: Google Sheets (file tracking)
+
+AI Orchestration:
+  - CrewAI (for multi-agent team tasks with clear role division)
+  - LLM: OpenRouter + DeepSeek (multilingual Chinese support)
+
+Workflow Engine:
+  - n8n (no-code workflow orchestration)
+
+External Integrations:
+  - Google Drive (document storage)
+  - Gmail (email ingestion)
+  - Google Sheets (backlog tracking)
+  - ElevenLabs Scribe v2 (STT)
+  - Telegram (notifications, bot queries)
+  - OpenRouter API (LLM routing)
+  - Deepgram (backup STT)
+
+Deployment:
+  - Platform: Railway (simplified deployment for MVP)
+  - Containerization: Docker Compose
+  - Environment: Multi-port architecture
+
+=== SECURITY & DATA REQUIREMENTS ===
+- User authentication required (login by project)
+- Role-based access control:
+  * Admin
+  * BA / PM / Tech Lead (standard users)
+  * Business Owner / Legal (approval users)
+  * IT colleagues (read-only)
+- Data protection: PII masking, permission controls, retention policy
+- Backup: Required
+- Audit logging: Complete with approver, timestamp, result
+
+=== ACCEPTANCE CRITERIA ===
+✓ User can upload meeting recordings via web UI
+✓ System auto-transcribes via ElevenLabs Scribe v2
+✓ Structured meeting minutes generated within 2 minutes
+✓ BRD/URS draft auto-generated with evidence citations
+✓ Version control tracks all changes with full audit log
+✓ Approval workflow works (3+ role hierarchy)
+✓ RAG knowledge base searchable by project scope
+✓ Telegram notifications sent for daily backlog scan
+✓ Weekly reports auto-generated and distributed
+✓ High-risk items flag for manual human review
+✓ Responsive design works on mobile / tablet
+
+=== OUT OF SCOPE (PHASE 1) ===
+- Contract/Terms clause extraction and analysis
+- Cost analysis algorithms
+- Enterprise-scale multi-tenant architecture
+- Custom LLM fine-tuning
+- Real-time collaboration editing
